@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <stddef.h>
 
 void do_work(int time_ms) {
     usleep(time_ms * 1000);
