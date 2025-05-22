@@ -31,7 +31,7 @@ FFQueue* ffq_init(int size, MPI_Win* win, MPI_Comm comm) {
         for (int i = 0; i < size; i++) {
             queue->cells[i].rank = EMPTY_CELL;
             queue->cells[i].gap = EMPTY_CELL;
-            queue->cells[i].data = 0;
+            // Data will be initialized when items are enqueued
         }
     } else {
         // Only rank 0 allocates memory, others just create the window
@@ -44,7 +44,7 @@ FFQueue* ffq_init(int size, MPI_Win* win, MPI_Comm comm) {
     return queue;
 }
 
-bool ffq_enqueue(FFQueue* queue, int item, MPI_Win win) {
+bool ffq_enqueue(FFQueue* queue, DataItem item, MPI_Win win) {
     bool success = false;
     int local_tail = queue->tail; // Cache the tail value
     
@@ -62,9 +62,9 @@ bool ffq_enqueue(FFQueue* queue, int item, MPI_Win win) {
         
         if (cell_rank < 0) {
             // Cell is free, write data first
-            MPI_Put(&item, 1, MPI_INT, 0, 
+            MPI_Put(&item, 1, MPI_DATATYPE_NULL, 0, 
                     offsetof(FFQueue, cells[idx].data), 
-                    1, MPI_INT, win);
+                    sizeof(DataItem), MPI_BYTE, win);
             MPI_Win_flush(0, win);
             
             // Then update the rank to mark as used
@@ -75,7 +75,7 @@ bool ffq_enqueue(FFQueue* queue, int item, MPI_Win win) {
             
             success = true;
             printf("Producer enqueued item %d at cell %d (rank %d)\n", 
-                   item, idx, local_tail);
+                   item.id, idx, local_tail);
         } else {
             // Cell is in use, mark as gap
             MPI_Put(&local_tail, 1, MPI_INT, 0, 
@@ -103,7 +103,7 @@ bool ffq_enqueue(FFQueue* queue, int item, MPI_Win win) {
     return success;
 }
 
-bool ffq_dequeue(FFQueue* queue, int consumer_id, int* item, MPI_Win win) {
+bool ffq_dequeue(FFQueue* queue, int consumer_id, DataItem* item, MPI_Win win) {
     int fetch_rank = 0;
     
     // Atomically fetch and increment the head
@@ -130,16 +130,18 @@ bool ffq_dequeue(FFQueue* queue, int consumer_id, int* item, MPI_Win win) {
         MPI_Win_lock(MPI_LOCK_SHARED, 0, 0, win);
         
         // Read cell values
-        int cell_rank, cell_gap, cell_data;
+        int cell_rank, cell_gap;
+        DataItem cell_data;
+        
         MPI_Get(&cell_rank, 1, MPI_INT, 0, 
                 offsetof(FFQueue, cells[idx].rank), 
                 1, MPI_INT, win);
         MPI_Get(&cell_gap, 1, MPI_INT, 0, 
                 offsetof(FFQueue, cells[idx].gap), 
                 1, MPI_INT, win);
-        MPI_Get(&cell_data, 1, MPI_INT, 0, 
+        MPI_Get(&cell_data, sizeof(DataItem), MPI_BYTE, 0, 
                 offsetof(FFQueue, cells[idx].data), 
-                1, MPI_INT, win);
+                sizeof(DataItem), MPI_BYTE, win);
         MPI_Win_flush(0, win);
         
         // Check if item has been dequeued already
@@ -174,7 +176,7 @@ bool ffq_dequeue(FFQueue* queue, int consumer_id, int* item, MPI_Win win) {
             
             success = true;
             printf("Consumer %d dequeued item %d from cell %d (rank %d)\n", 
-                   consumer_id, *item, idx, fetch_rank);
+                   consumer_id, item->id, idx, fetch_rank);
         } 
         else if (cell_gap >= fetch_rank && cell_rank != fetch_rank) {
             // Cell was skipped, move to next rank

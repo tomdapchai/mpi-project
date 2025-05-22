@@ -1,6 +1,6 @@
 CC = mpicc
 CFLAGS = -Wall -Wextra -O2
-LDFLAGS =
+LDFLAGS = -lm
 
 SRC_DIR = src
 BUILD_DIR = build
@@ -26,7 +26,7 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -I$(INC_DIR) -c $< -o $@
 
 $(EXECUTABLE): $(OBJS)
-	$(CC) $(LDFLAGS) $^ -o $@
+	$(CC) $^ -o $@ $(LDFLAGS)
 
 clean:
 	rm -rf $(BUILD_DIR) $(BIN_DIR)
