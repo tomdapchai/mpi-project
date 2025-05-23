@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stddef.h>
+#include <string.h>
 
 void do_work(int time_ms) {
     usleep(time_ms * 1000);
@@ -31,7 +32,8 @@ FFQueue* ffq_init(int size, MPI_Win* win, MPI_Comm comm) {
         for (int i = 0; i < size; i++) {
             queue->cells[i].rank = EMPTY_CELL;
             queue->cells[i].gap = EMPTY_CELL;
-            // Data will be initialized when items are enqueued
+            memset(&(queue->cells[i].data), 0, sizeof(WeatherData));
+            queue->cells[i].data.valid = false;
         }
     } else {
         // Only rank 0 allocates memory, others just create the window
@@ -44,9 +46,31 @@ FFQueue* ffq_init(int size, MPI_Win* win, MPI_Comm comm) {
     return queue;
 }
 
-bool ffq_enqueue(FFQueue* queue, DataItem item, MPI_Win win) {
+// Create MPI datatype for WeatherData
+static MPI_Datatype create_weather_data_type() {
+    MPI_Datatype weather_type;
+    int blocklengths[] = {MAX_TIMESTAMP_LEN, MAX_CITY_LEN, 1, MAX_ICON_LEN, 1, 1, 1};
+    MPI_Datatype types[] = {MPI_CHAR, MPI_CHAR, MPI_INT, MPI_CHAR, MPI_FLOAT, MPI_INT, MPI_C_BOOL};
+    MPI_Aint offsets[7];
+    
+    offsets[0] = offsetof(WeatherData, timestamp);
+    offsets[1] = offsetof(WeatherData, city);
+    offsets[2] = offsetof(WeatherData, aqi);
+    offsets[3] = offsetof(WeatherData, weather_icon);
+    offsets[4] = offsetof(WeatherData, wind_speed);
+    offsets[5] = offsetof(WeatherData, humidity);
+    offsets[6] = offsetof(WeatherData, valid);
+    
+    MPI_Type_create_struct(7, blocklengths, offsets, types, &weather_type);
+    MPI_Type_commit(&weather_type);
+    
+    return weather_type;
+}
+
+bool ffq_enqueue(FFQueue* queue, WeatherData item, MPI_Win win) {
     bool success = false;
     int local_tail = queue->tail; // Cache the tail value
+    MPI_Datatype weather_type = create_weather_data_type();
     
     while (!success) {
         MPI_Win_lock(MPI_LOCK_EXCLUSIVE, 0, 0, win);
@@ -62,9 +86,9 @@ bool ffq_enqueue(FFQueue* queue, DataItem item, MPI_Win win) {
         
         if (cell_rank < 0) {
             // Cell is free, write data first
-            MPI_Put(&item, 1, MPI_DATATYPE_NULL, 0, 
+            MPI_Put(&item, 1, weather_type, 0, 
                     offsetof(FFQueue, cells[idx].data), 
-                    sizeof(DataItem), MPI_BYTE, win);
+                    1, weather_type, win);
             MPI_Win_flush(0, win);
             
             // Then update the rank to mark as used
@@ -74,8 +98,8 @@ bool ffq_enqueue(FFQueue* queue, DataItem item, MPI_Win win) {
             MPI_Win_flush(0, win);
             
             success = true;
-            printf("Producer enqueued item %d at cell %d (rank %d)\n", 
-                   item.id, idx, local_tail);
+            printf("Producer enqueued item for city %s at cell %d (rank %d)\n", 
+                   item.city, idx, local_tail);
         } else {
             // Cell is in use, mark as gap
             MPI_Put(&local_tail, 1, MPI_INT, 0, 
@@ -100,11 +124,13 @@ bool ffq_enqueue(FFQueue* queue, DataItem item, MPI_Win win) {
         }
     }
     
+    MPI_Type_free(&weather_type);
     return success;
 }
 
-bool ffq_dequeue(FFQueue* queue, int consumer_id, DataItem* item, MPI_Win win) {
+bool ffq_dequeue(FFQueue* queue, int consumer_id, WeatherData* item, MPI_Win win) {
     int fetch_rank = 0;
+    MPI_Datatype weather_type = create_weather_data_type();
     
     // Atomically fetch and increment the head
     MPI_Win_lock(MPI_LOCK_EXCLUSIVE, 0, 0, win);
@@ -131,17 +157,16 @@ bool ffq_dequeue(FFQueue* queue, int consumer_id, DataItem* item, MPI_Win win) {
         
         // Read cell values
         int cell_rank, cell_gap;
-        DataItem cell_data;
-        
+        WeatherData cell_data;
         MPI_Get(&cell_rank, 1, MPI_INT, 0, 
                 offsetof(FFQueue, cells[idx].rank), 
                 1, MPI_INT, win);
         MPI_Get(&cell_gap, 1, MPI_INT, 0, 
                 offsetof(FFQueue, cells[idx].gap), 
                 1, MPI_INT, win);
-        MPI_Get(&cell_data, sizeof(DataItem), MPI_BYTE, 0, 
+        MPI_Get(&cell_data, 1, weather_type, 0, 
                 offsetof(FFQueue, cells[idx].data), 
-                sizeof(DataItem), MPI_BYTE, win);
+                1, weather_type, win);
         MPI_Win_flush(0, win);
         
         // Check if item has been dequeued already
@@ -175,8 +200,8 @@ bool ffq_dequeue(FFQueue* queue, int consumer_id, DataItem* item, MPI_Win win) {
             MPI_Win_unlock(0, win);
             
             success = true;
-            printf("Consumer %d dequeued item %d from cell %d (rank %d)\n", 
-                   consumer_id, item->id, idx, fetch_rank);
+            printf("Consumer %d dequeued item for city %s from cell %d (rank %d)\n", 
+                   consumer_id, item->city, idx, fetch_rank);
         } 
         else if (cell_gap >= fetch_rank && cell_rank != fetch_rank) {
             // Cell was skipped, move to next rank
@@ -200,5 +225,6 @@ bool ffq_dequeue(FFQueue* queue, int consumer_id, DataItem* item, MPI_Win win) {
         }
     }
     
+    MPI_Type_free(&weather_type);
     return success;
 }
