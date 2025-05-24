@@ -44,6 +44,14 @@ run: $(EXECUTABLE)
 benchmark: $(EXECUTABLE)
 	mpirun -np 4 $(EXECUTABLE) --mode=benchmark
 
+# Run file mode
+file: $(EXECUTABLE)
+	mpirun -np 4 $(EXECUTABLE) --mode=file
+
+# Run benchmark with options
+run_benchmark: $(EXECUTABLE)
+	mpirun -np 4 $(EXECUTABLE) --mode=benchmark --producer-delay=0 --consumer-delay=0
+
 # Sample structure for headers and source files
 setup_files: create_structure
 	@echo "// FFQ header file" > $(INC_DIR)/ffq.h

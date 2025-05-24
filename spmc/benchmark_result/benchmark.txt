@@ -1,0 +1,37 @@
+FFQ Benchmark Results
+====================
+
+Configuration:
+  Queue size: 20
+  Producer delay: 50 ms
+  Consumer delay: 200 ms
+  CSV file: storage/benchmark.csv
+  Number of processes: 4
+  Number of consumers: 3
+
+Benchmark producer started with file: storage/benchmark.csv
+Enqueued 100 items...
+Enqueued 200 items...
+Enqueued 300 items...
+Enqueued 400 items...
+Enqueued 500 items...
+Enqueued 3 sentinel items - one for each consumer
+Benchmark producer finished:
+  Items enqueued: 548
+  Total time: 35.464 seconds
+  Enqueue rate: 15.45 items/second
+
+Benchmark Results:
+-----------------------------------
+Total items produced: 548
+Total items consumed: 548
+Total benchmark time: 36.692 seconds
+Producer time: 35.464 seconds
+Consumer time (max): 36.692 seconds
+Consumer 1: 183 items, 4.99 items/sec, time: 36.650 sec
+Consumer 2: 183 items, 4.99 items/sec, time: 36.692 sec
+Consumer 3: 182 items, 4.98 items/sec, time: 36.548 sec
+
+Overall throughput: 14.94 items/second
+Consumer efficiency: 100.0%
+-----------------------------------

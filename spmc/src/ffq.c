@@ -200,8 +200,8 @@ bool ffq_dequeue(FFQueue* queue, int consumer_id, WeatherData* item, MPI_Win win
             MPI_Win_unlock(0, win);
             
             success = true;
-            printf("Consumer %d dequeued item for city %s from cell %d (rank %d)\n", 
-                   consumer_id, item->city, idx, fetch_rank);
+            printf("Consumer %d dequeued item for (timestamp %s, city %s, aqi %d, wind_speed %f, humidity %d) from cell %d (rank %d)\n", 
+                   consumer_id, item->timestamp, item->city, item->aqi, item->wind_speed, item->humidity, idx, fetch_rank);
         } 
         else if (cell_gap >= fetch_rank && cell_rank != fetch_rank) {
             // Cell was skipped, move to next rank
