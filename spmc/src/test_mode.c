@@ -1,5 +1,6 @@
 #include "test_mode.h"
 #include <stdio.h>
+#include <stddef.h>
 
 // Generate test data for TEST_MODE
 WeatherData generate_test_data(int item_number) {
