@@ -14,8 +14,6 @@ consumer = KafkaConsumer(
     group_id='climate-group'
 )
 
-print(f"Consumer đang lắng nghe trên topic: {TOPIC}")
-
 # Create a new CSV file with headers if it doesn't exist or is empty
 if not os.path.exists(OUTPUT_FILE) or os.path.getsize(OUTPUT_FILE) == 0:
     with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
@@ -26,7 +24,6 @@ with open(OUTPUT_FILE, 'a', encoding='utf-8') as f:
         try:
             # Decode and parse the JSON message
             decoded_message = message.value.decode('utf-8')
-            print(f"Nhận được: {decoded_message}")
             
             # Parse JSON
             data = json.loads(decoded_message)
