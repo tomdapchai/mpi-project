@@ -6,29 +6,27 @@ Configuration:
   Producer delay: 50 ms
   Consumer delay: 200 ms
   CSV file: storage/benchmark.csv
-  Number of processes: 6
-  Number of consumers: 5
+  Number of processes: 4
+  Number of consumers: 3
 
 Benchmark producer started with file: storage/benchmark.csv
-Enqueued 5 sentinel items - one for each consumer
+Enqueued 3 sentinel items - one for each consumer
 Benchmark producer finished:
-  Items enqueued: 10960
-  Total time: 585.620 seconds
-  Enqueue rate: 18.72 items/second
+  Items enqueued: 548
+  Total time: 35.444 seconds
+  Enqueue rate: 15.46 items/second
 
 Benchmark Results:
 -----------------------------------
-Total items produced: 10960
-Total items consumed: 10960
-Total benchmark time: 585.777 seconds
-Producer time: 585.620 seconds
-Consumer time (max): 585.777 seconds
-Consumer 1: 2192 items, 3.74 items/sec, time: 585.621 sec
-Consumer 2: 2192 items, 3.74 items/sec, time: 585.621 sec
-Consumer 3: 2192 items, 3.74 items/sec, time: 585.674 sec
-Consumer 4: 2192 items, 3.74 items/sec, time: 585.777 sec
-Consumer 5: 2192 items, 3.74 items/sec, time: 585.727 sec
+Total items produced: 548
+Total items consumed: 548
+Total benchmark time: 36.690 seconds
+Producer time: 35.444 seconds
+Consumer time (max): 36.690 seconds
+Consumer 1: 182 items, 4.98 items/sec, time: 36.541 sec
+Consumer 2: 183 items, 4.99 items/sec, time: 36.690 sec
+Consumer 3: 183 items, 4.99 items/sec, time: 36.662 sec
 
-Overall throughput: 18.71 items/second
+Overall throughput: 14.94 items/second
 Consumer efficiency: 100.0%
 -----------------------------------

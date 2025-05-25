@@ -73,7 +73,7 @@ bool ffq_enqueue(FFQueue* queue, WeatherData item, MPI_Win win) {
     MPI_Datatype weather_type = create_weather_data_type();
     
     while (!success) {
-        MPI_Win_lock(MPI_LOCK_EXCLUSIVE, 0, 0, win);
+        MPI_Win_lock(MPI_LOCK_SHARED, 0, 0, win);
         
         int idx = local_tail % queue->size;
         
