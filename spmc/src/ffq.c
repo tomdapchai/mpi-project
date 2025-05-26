@@ -85,21 +85,22 @@ bool ffq_enqueue(FFQueue* queue, WeatherData item, MPI_Win win) {
         MPI_Win_flush(0, win);
         
         if (cell_rank < 0) {
-            // Cell is free, write data first
-            MPI_Put(&item, 1, weather_type, 0, 
-                    offsetof(FFQueue, cells[idx].data), 
-                    1, weather_type, win);
+            // Use exclusive lock for the critical update section
+            MPI_Win_lock(MPI_LOCK_EXCLUSIVE, 0, 0, win);
+            
+            // Re-check the condition under exclusive lock
+            MPI_Get(&cell_rank, 1, MPI_INT, 0, offsetof(FFQueue, cells[idx].rank), 1, MPI_INT, win);
             MPI_Win_flush(0, win);
             
-            // Then update the rank to mark as used
-            MPI_Put(&local_tail, 1, MPI_INT, 0, 
-                    offsetof(FFQueue, cells[idx].rank), 
-                    1, MPI_INT, win);
-            MPI_Win_flush(0, win);
+            if (cell_rank < 0) {
+                // Proceed with enqueue
+                MPI_Put(&item, 1, weather_type, 0, offsetof(FFQueue, cells[idx].data), 1, weather_type, win);
+                MPI_Put(&local_tail, 1, MPI_INT, 0, offsetof(FFQueue, cells[idx].rank), 1, MPI_INT, win);
+                MPI_Win_flush(0, win);
+                success = true;
+            }
             
-            success = true;
-            printf("Producer enqueued item for city %s at cell %d (rank %d)\n", 
-                   item.city, idx, local_tail);
+            MPI_Win_unlock(0, win);
         } else {
             // Cell is in use, mark as gap
             MPI_Put(&local_tail, 1, MPI_INT, 0, 
