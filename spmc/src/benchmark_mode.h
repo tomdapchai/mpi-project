@@ -25,7 +25,9 @@ bool is_sentinel_item(const WeatherData *item);
 // Ensure the benchmark result directory exists
 void ensure_benchmark_dir(void);
 
-// Run benchmark producer - reads from file until EOF, with consumers working concurrently
+// Run benchmark producer - generates simple sequential data for pure queue benchmarking
+// NOTE: Currently generates 10000 items in-memory (no file I/O for pure performance testing)
+// To use CSV file instead, see commented code in benchmark_mode.c
 void run_benchmark_producer(FFQueue *queue, const char *csv_file, int delay_ms,
                             MPI_Win win, BenchmarkStats *stats, int num_consumers, FILE *result_file);
 
